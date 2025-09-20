@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+torch
+transformers
+pydub
+python-multipart
+librosa
+soundfile
+noisereduce
+sentencepiece
+jellyfish
