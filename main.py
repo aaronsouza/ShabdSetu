@@ -1,7 +1,6 @@
 # main.py
 
 import io
-import os
 import psycopg2
 import numpy as np
 import torch
@@ -10,6 +9,9 @@ from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 from pydub import AudioSegment
+
+# Import our pronunciation evaluation logic
+from pronunciation_evaluator import evaluate_pronunciation
 
 # --- IMPORTANT: PASTE YOUR DATABASE CREDENTIALS HERE ---
 DB_HOST = "db.biutmpyotmmsjcnbllff.supabase.co"
@@ -24,9 +26,9 @@ DB_PASSWORD = "aaronashutosh"
 # -----------------
 
 app = FastAPI(
-    title="BisiBaath Dialect AI API",
-    description="API for collecting and validating dialect contributions.",
-    version="1.0.0"
+    title="BhashaBuddy Complete AI API",
+    description="API for both learning pronunciation and documenting dialects.",
+    version="2.0.0"
 )
 
 ASR_MODELS = {}
@@ -64,6 +66,7 @@ def get_db_connection():
 
 
 def preprocess_audio(audio_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
+    """Cleans and standardizes the audio file."""
     try:
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
         audio_segment = audio_segment.set_channels(1)
@@ -91,7 +94,57 @@ def transcribe_audio_data(audio_data: np.ndarray, lang: str) -> str:
 
 
 # -----------------
-# 3. DIALECT CONTRIBUTION ENDPOINT (IMPLEMENTS TASK 1 & 2)
+# 3. LEARNING MODE ENDPOINT (PART 1)
+# -----------------
+
+@app.post("/api/v1/learning/evaluate")
+async def evaluate_user_pronunciation(
+        lang: str = Form(..., description="Language code (e.g., 'hi')"),
+        phrase_id: str = Form(..., description="The ID of the phrase to evaluate against (e.g., 'HIN_001')"),
+        audio_file: UploadFile = File(..., description="User's audio recording of the phrase.")
+):
+    """
+    Accepts user audio, transcribes it, and evaluates pronunciation against a target phrase.
+    """
+    conn = None
+    try:
+        # 1. Fetch the correct target phrase from the 'phrases' table in the database
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT phrase FROM phrases WHERE id = %s;", (phrase_id,))
+        result = cur.fetchone()
+        cur.close()
+
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Phrase ID '{phrase_id}' not found.")
+        target_phrase = result[0]
+
+        # 2. Process and transcribe the user's audio
+        contents = await audio_file.read()
+        processed_audio = preprocess_audio(contents)
+        transcribed_text = transcribe_audio_data(processed_audio, lang)
+
+        if not transcribed_text:
+            return {
+                "transcription": "", "target_phrase": target_phrase,
+                "score": 0, "feedback": "We couldn't hear you clearly. Please try speaking louder."
+            }
+
+        # 3. Call our evaluator to get the score and feedback
+        evaluation = evaluate_pronunciation(transcribed_text, target_phrase, lang)
+
+        # 4. Return the complete evaluation
+        return evaluation
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            conn.close()
+
+
+# -----------------
+# 4. DOCUMENTING MODE ENDPOINT (PART 2)
 # -----------------
 
 @app.post("/api/v1/dialects/contribute")
@@ -101,7 +154,7 @@ async def contribute_dialect(
         meaning: str = Form(..., description="The meaning of the word."),
         region: str = Form(..., description="The region where the word is used."),
         notes: str = Form(None, description="Any additional context or notes."),
-        audio_file: UploadFile = File(..., description="The audio recording.")
+        audio_file: UploadFile = File(..., description="The audio recording of the word.")
 ):
     """
     Handles user-submitted recordings of dialect words, processes them,
@@ -109,17 +162,16 @@ async def contribute_dialect(
     """
     conn = None
     try:
-        # --- Task 1: Processing and Storing Contributions ---
+        # 1. Processing and Storing Contributions
         audio_bytes = await audio_file.read()
         processed_audio = preprocess_audio(audio_bytes)
         asr_transcription = transcribe_audio_data(processed_audio, lang)
 
-        user_id = "user_abc_123"  # Hardcoded for now; would come from a login system.
+        user_id = "user_abc_123"  # This would come from a real user authentication system
 
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Save all information to the contributions table
         insert_query = """
         INSERT INTO dialect_contributions 
         (user_id, audio_data, user_spelling, asr_transcription, meaning, region, notes, status, created_at)
@@ -135,22 +187,18 @@ async def contribute_dialect(
 
         print(f"✅ Contribution {new_contribution_id} saved with status 'pending_review'.")
 
-        # --- Task 2: Developing the "Rarity" Detector ---
-
+        # 2. Rarity Detector
         is_rare = False
-        # Check the main dictionary for the transcribed word
         check_query = "SELECT COUNT(*) FROM dialect_dictionary WHERE word = %s;"
         cur.execute(check_query, (asr_transcription,))
         count = cur.fetchone()[0]
 
-        # If the word is not found, flag it for expert review
         if count == 0:
             is_rare = True
-            # Update the status in the database to create the review queue
             update_query = "UPDATE dialect_contributions SET status = %s WHERE id = %s;"
             cur.execute(update_query, ('pending_expert_validation', new_contribution_id))
             conn.commit()
-            print(f"✅ Rare word! Contribution {new_contribution_id} flagged for expert validation.")
+            print(f"✅ Rare word detected! Contribution {new_contribution_id} flagged for expert validation.")
 
         cur.close()
 
@@ -163,6 +211,8 @@ async def contribute_dialect(
         }
 
     except Exception as e:
+        if conn:
+            conn.rollback()  # Roll back transaction on error
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if conn:
@@ -170,12 +220,14 @@ async def contribute_dialect(
 
 
 # -----------------
-# 4. ROOT ENDPOINT
+# 5. ROOT ENDPOINT
 # -----------------
 
 @app.get("/")
 def read_root():
-    return {"status": "ok", "message": "Welcome to the BisiBaath Dialect AI API!"}
+    return {"status": "ok", "message": "Welcome to the BhashaBuddy Complete AI API!"}
+
+
 
 
 
