@@ -9,10 +9,15 @@ DB_USER = "postgres"
 DB_PASSWORD = "aaronashutosh"
 # ---
 
-# This is the SQL code that will create our tables.
+# This is the updated SQL code. It uses a DO block to safely create
+# the custom type only if it doesn't already exist.
 SQL_COMMANDS = """
--- Create a custom type for the status, which is good practice
-CREATE TYPE status_enum AS ENUM ('pending_review', 'pending_expert_validation', 'verified', 'rejected');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status_enum') THEN
+        CREATE TYPE status_enum AS ENUM ('pending_review', 'pending_expert_validation', 'verified', 'rejected');
+    END IF;
+END$$;
 
 -- Table 1: The main, verified dictionary of dialect words
 CREATE TABLE IF NOT EXISTS dialect_dictionary (
@@ -43,7 +48,6 @@ VALUES ('नमस्ते', 'A respectful greeting', 'General Hindi')
 ON CONFLICT (word) DO NOTHING;
 """
 
-
 def setup_database():
     """Connects to the database and executes the setup commands."""
     conn = None
@@ -69,8 +73,10 @@ def setup_database():
             conn.close()
             print("Database connection closed.")
 
-
 if __name__ == "__main__":
     setup_database()
+
+
+
 
 
