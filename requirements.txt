@@ -1,6 +1,5 @@
 fastapi
 uvicorn[standard]
-torch
 transformers
 pydub
 python-multipart
@@ -9,3 +8,4 @@ soundfile
 noisereduce
 sentencepiece
 jellyfish
+psycopg2-binary
