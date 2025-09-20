@@ -2,10 +2,11 @@ fastapi
 uvicorn[standard]
 torch
 transformers
+sentencepiece
+accelerate
 pydub
 python-multipart
 librosa
 soundfile
 noisereduce
-sentencepiece
 jellyfish
