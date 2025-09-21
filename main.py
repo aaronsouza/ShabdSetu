@@ -6,19 +6,21 @@ import numpy as np
 import torch
 import noisereduce as nr
 from datetime import datetime
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Body
+from fastapi.responses import FileResponse
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 from pydub import AudioSegment
 
-# Import our pronunciation evaluation logic
+# Import our custom logic modules
 from pronunciation_evaluator import evaluate_pronunciation
+from tts_generator import load_tts_models, generate_speech_audio
 
 # --- IMPORTANT: PASTE YOUR DATABASE CREDENTIALS HERE ---
-DB_HOST = "db.biutmpyotmmsjcnbllff.supabase.co"
+DB_HOST = "your_supabase_host"
 DB_PORT = "5432"
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "aaronashutosh"
+DB_PASSWORD = "your_supabase_project_password"
 # ---
 
 # -----------------
@@ -27,8 +29,8 @@ DB_PASSWORD = "aaronashutosh"
 
 app = FastAPI(
     title="BhashaBuddy Complete AI API",
-    description="API for both learning pronunciation and documenting dialects.",
-    version="2.0.0"
+    description="API for learning pronunciation, documenting dialects, and text-to-speech.",
+    version="3.0.0"
 )
 
 ASR_MODELS = {}
@@ -36,8 +38,13 @@ SUPPORTED_LANGUAGES = {"hi": "./indicwav2vec-hindi"}
 
 
 @app.on_event("startup")
-async def load_models():
-    """Load all AI models on server startup."""
+async def startup_event():
+    """Load all AI models (ASR and TTS) on server startup."""
+    load_asr_models()
+    load_tts_models()  # Load the TTS models
+
+
+def load_asr_models():
     print("Loading ASR models...")
     for lang_code, model_name in SUPPORTED_LANGUAGES.items():
         try:
@@ -94,7 +101,7 @@ def transcribe_audio_data(audio_data: np.ndarray, lang: str) -> str:
 
 
 # -----------------
-# 3. LEARNING MODE ENDPOINT (PART 1)
+# 3. LEARNING MODE ENDPOINT (PART 1, TASK 2)
 # -----------------
 
 @app.post("/api/v1/learning/evaluate")
@@ -108,7 +115,6 @@ async def evaluate_user_pronunciation(
     """
     conn = None
     try:
-        # 1. Fetch the correct target phrase from the 'phrases' table in the database
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT phrase FROM phrases WHERE id = %s;", (phrase_id,))
@@ -119,7 +125,6 @@ async def evaluate_user_pronunciation(
             raise HTTPException(status_code=404, detail=f"Phrase ID '{phrase_id}' not found.")
         target_phrase = result[0]
 
-        # 2. Process and transcribe the user's audio
         contents = await audio_file.read()
         processed_audio = preprocess_audio(contents)
         transcribed_text = transcribe_audio_data(processed_audio, lang)
@@ -130,10 +135,7 @@ async def evaluate_user_pronunciation(
                 "score": 0, "feedback": "We couldn't hear you clearly. Please try speaking louder."
             }
 
-        # 3. Call our evaluator to get the score and feedback
         evaluation = evaluate_pronunciation(transcribed_text, target_phrase, lang)
-
-        # 4. Return the complete evaluation
         return evaluation
 
     except Exception as e:
@@ -157,17 +159,15 @@ async def contribute_dialect(
         audio_file: UploadFile = File(..., description="The audio recording of the word.")
 ):
     """
-    Handles user-submitted recordings of dialect words, processes them,
-    stores them, and flags them for rarity.
+    Handles user-submitted recordings of dialect words, processes them, stores them, and flags them for rarity.
     """
     conn = None
     try:
-        # 1. Processing and Storing Contributions
         audio_bytes = await audio_file.read()
         processed_audio = preprocess_audio(audio_bytes)
         asr_transcription = transcribe_audio_data(processed_audio, lang)
 
-        user_id = "user_abc_123"  # This would come from a real user authentication system
+        user_id = "user_abc_123"
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -187,7 +187,6 @@ async def contribute_dialect(
 
         print(f"✅ Contribution {new_contribution_id} saved with status 'pending_review'.")
 
-        # 2. Rarity Detector
         is_rare = False
         check_query = "SELECT COUNT(*) FROM dialect_dictionary WHERE word = %s;"
         cur.execute(check_query, (asr_transcription,))
@@ -211,21 +210,46 @@ async def contribute_dialect(
         }
 
     except Exception as e:
-        if conn:
-            conn.rollback()  # Roll back transaction on error
+        if conn: conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if conn:
-            conn.close()
+        if conn: conn.close()
 
 
 # -----------------
-# 5. ROOT ENDPOINT
+# 5. TEXT-TO-SPEECH ENDPOINT (PART 1, TASK 3)
+# -----------------
+
+@app.post("/api/v1/learning/speak", response_class=FileResponse)
+async def speak_text(
+        payload: dict = Body(...)
+):
+    """
+    Accepts text and a language, and returns the spoken audio as a WAV file.
+    Example Payload: { "text": "नमस्ते आप कैसे हैं", "language": "hi" }
+    """
+    text = payload.get("text")
+    language = payload.get("language")
+
+    if not text or not language:
+        raise HTTPException(status_code=400, detail="Payload must include 'text' and 'language'.")
+
+    try:
+        audio_response = generate_speech_audio(text, language)
+        return audio_response
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -----------------
+# 6. ROOT ENDPOINT
 # -----------------
 
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Welcome to the BhashaBuddy Complete AI API!"}
+
+
 
 
 

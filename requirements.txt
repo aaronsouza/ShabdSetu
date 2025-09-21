@@ -9,3 +9,5 @@ noisereduce
 sentencepiece
 jellyfish
 psycopg2-binary
+piper-tts
+requests
