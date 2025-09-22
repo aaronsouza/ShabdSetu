@@ -123,12 +123,7 @@ curl.exe -X POST "http://127.0.0.1:8001/api/v1/learning/evaluate" -H "accept: ap
 Requires `test_namaste.wav` (recording of "नमस्ते"). Expected: `is_rare_candidate: false`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" ` 
->> -F "lang=hi" `                                                             
->> -F "user_spelling=नमस्ते" `                                 
->> -F "meaning=A respectful greeting" `
->> -F "region=General" `            
->> -F "audio_file=@test_namaste.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" -F "lang=hi" -F "user_spelling=??????" -F "meaning=A respectful greeting" -F "region=General" -F "audio_file=@test_namaste.wav"
 ```
 
 ### B. Contributing a "Rare" Word
@@ -136,10 +131,5 @@ curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" `
 Requires `test_shukriya.wav` (recording of "शुक्रिया"). Expected: `is_rare_candidate: true`, status `pending_expert_validation`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" ` 
->> -F "lang=hi" `                                                             
->> -F "user_spelling=शुक्रिया" `                                 
->> -F "meaning=Thank you" `
->> -F "region=Urdu Influence" `            
->> -F "audio_file=@test_shukriya.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" -F "lang=hi" -F "user_spelling=शुक्रिया" -F "meaning=Thank you" -F "region=Urdu Influence" -F "audio_file=@test_shukriya_contribution.wav"
 ```
