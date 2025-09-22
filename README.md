@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-ShadbdSetu is a **gamified Indian language learning and dialect preservation platform** built by Team BisiGitBaath. The project addresses two major issues:
+ShabdSetu is a **gamified Indian language learning and dialect preservation platform** built by Team BisiGitBaath. The project addresses two major issues:
 
 1. **Lack of interactive tools** for learning Indian languages with pronunciation and conversational practice.
 2. **Dying dialects** – many Indian dialects are disappearing rapidly due to lack of documentation and oral-only traditions.
