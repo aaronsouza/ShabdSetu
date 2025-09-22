@@ -1,6 +1,6 @@
 # ShabdSetu– Dying Dialects Dilemma
 
-## 📖 Project Overview
+## Project Overview
 
 ShadbdSetu is a **gamified Indian language learning and dialect preservation platform** built by Team BisiGitBaath. The project addresses two major issues:
 
@@ -11,7 +11,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 ---
 
-## ✨ Features
+## Features
 
 * **Language Learning Mode**
 
@@ -36,7 +36,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 * **Frontend (Web):** React / Next.js
 * **Frontend (Android):** Kotlin + Jetpack Compose
@@ -47,7 +47,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 ---
 
-## 🚀 Workflows
+## Workflows
 
 ### Learning Mode Workflow
 
@@ -69,7 +69,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 ---
 
-## 💡 Novelty & Impact
+## Novelty & Impact
 
 * India-first **gamified learning + dialect preservation** platform.
 * End-to-end **Indic AI stack** integration.
@@ -78,7 +78,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 ---
 
-# 🔗 API Endpoint Reference
+# API Endpoint Reference
 
 This document provides **curl.exe commands** to test ShabdSetu API endpoints. Ensure your Python server is running in **PyCharm** before executing them.
 
