@@ -131,5 +131,5 @@ curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" -F "lang=hi"
 Requires `test_shukriya.wav` (recording of "शुक्रिया"). Expected: `is_rare_candidate: true`, status `pending_expert_validation`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" -F "lang=hi" -F "user_spelling=शुक्रिया" -F "meaning=Thank you" -F "region=Urdu Influence" -F "audio_file=@test_shukriya_contribution.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" -F "lang=hi" -F "user_spelling=????????" -F "meaning=Thank you" -F "region=Urdu Influence" -F "audio_file=@test_shukriya.wav"
 ```
