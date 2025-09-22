@@ -77,3 +77,27 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 * Future generations can access preserved dialects & cultural content.
 
 ---
+
+⚙️ API Endpoint ReferenceHere are the curl.exe commands to test the API endpoints.Part 1: Learning Mode CommandsA. Fetching Lesson Content1. Get All Learning Categoriescurl.exe "[http://127.0.0.1:8001/api/v1/learning/categories](http://127.0.0.1:8001/api/v1/learning/categories)"
+2. Get Lessons for a Specific Category (e.g., Category 1 for "Greetings")curl.exe "[http://127.0.0.1:8001/api/v1/learning/lessons/1](http://127.0.0.1:8001/api/v1/learning/lessons/1)"
+3. Get Phrases for a Specific Lesson (e.g., Lesson 1 for "Formal Greetings")curl.exe "[http://127.0.0.1:8001/api/v1/learning/phrases/1](http://127.0.0.1:8001/api/v1/learning/phrases/1)"
+B. Evaluating Pronunciation (Score & Feedback)Testing "नमस्ते" (ID HIN_GREET_01). Requires test_hindi.wav file.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/learning/evaluate](http://127.0.0.1:8001/api/v1/learning/evaluate)" `
+-H "accept: application/json" `
+-F "lang=hi" `
+-F "phrase_id=HIN_GREET_01" `
+-F "audio_file=@test_hindi.wav"
+Part 2: Documenting Mode CommandsA. Contributing a "Common" WordTesting "नमस्ते". Should respond with "is_rare_candidate": false. Requires test_namaste_contribution.wav.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/dialects/contribute](http://127.0.0.1:8001/api/v1/dialects/contribute)" `
+-F "lang=hi" `
+-F "user_spelling=नमस्ते" `
+-F "meaning=A respectful greeting" `
+-F "region=General" `
+-F "audio_file=@test_namaste_contribution.wav"
+B. Contributing a "Rare" WordTesting "शुक्रिया". Should respond with "is_rare_candidate": true. Requires test_shukriya_contribution.wav.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/dialects/contribute](http://127.0.0.1:8001/api/v1/dialects/contribute)" `
+-F "lang=hi" `
+-F "user_spelling=शुक्रिया" `
+-F "meaning=Thank you" `
+-F "region=Urdu Influence" `
+-F "audio_file=@test_shukriya_contribution.wav"
+
+
+
