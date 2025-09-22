@@ -111,11 +111,7 @@ curl.exe "http://127.0.0.1:8001/api/v1/learning/phrases/1"
 Requires `test_hindi.wav` (recording of "नमस्ते") in the project folder. Evaluates against phrase ID `HIN_GREET_01`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/learning/evaluate" ` 
->> -H "accept: application/json" `
->> -F "lang=hi" `
->> -F "phrase_id=HIN_GREET_01" `
->> -F "audio_file=@test_hindi.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/learning/evaluate" -H "accept: application/json" -F "lang=hi" -F "phrase_id=HIN_GREET_01" -F "audio_file=@test_namaste.wav"
 ```
 
 ---
