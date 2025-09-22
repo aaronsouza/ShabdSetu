@@ -80,7 +80,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 # 🔗 API Endpoint Reference
 
-This document provides **curl.exe commands** to test BhashaBuddy API endpoints. Ensure your Python server is running in **PyCharm** before executing them.
+This document provides **curl.exe commands** to test ShabdSetu API endpoints. Ensure your Python server is running in **PyCharm** before executing them.
 
 ---
 
@@ -111,11 +111,11 @@ curl.exe "http://127.0.0.1:8001/api/v1/learning/phrases/1"
 Requires `test_hindi.wav` (recording of "नमस्ते") in the project folder. Evaluates against phrase ID `HIN_GREET_01`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/learning/evaluate" \
-  -H "accept: application/json" \
-  -F "lang=hi" \
-  -F "phrase_id=HIN_GREET_01" \
-  -F "audio_file=@test_hindi.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/learning/evaluate" ` 
+>> -H "accept: application/json" `
+>> -F "lang=hi" `
+>> -F "phrase_id=HIN_GREET_01" `
+>> -F "audio_file=@test_hindi.wav"
 ```
 
 ---
@@ -124,31 +124,26 @@ curl.exe -X POST "http://127.0.0.1:8001/api/v1/learning/evaluate" \
 
 ### A. Contributing a "Common" Word
 
-Requires `test_namaste_contribution.wav` (recording of "नमस्ते"). Expected: `is_rare_candidate: false`.
+Requires `test_namaste.wav` (recording of "नमस्ते"). Expected: `is_rare_candidate: false`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" \
-  -F "lang=hi" \
-  -F "user_spelling=नमस्ते" \
-  -F "meaning=A respectful greeting" \
-  -F "region=General" \
-  -F "audio_file=@test_namaste_contribution.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" ` 
+>> -F "lang=hi" `                                                             
+>> -F "user_spelling=नमस्ते" `                                 
+>> -F "meaning=A respectful greeting" `
+>> -F "region=General" `            
+>> -F "audio_file=@test_namaste.wav"
 ```
 
 ### B. Contributing a "Rare" Word
 
-Requires `test_shukriya_contribution.wav` (recording of "शुक्रिया"). Expected: `is_rare_candidate: true`, status `pending_expert_validation`.
+Requires `test_shukriya.wav` (recording of "शुक्रिया"). Expected: `is_rare_candidate: true`, status `pending_expert_validation`.
 
 ```bash
-curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" \
-  -F "lang=hi" \
-  -F "user_spelling=शुक्रिया" \
-  -F "meaning=Thank you" \
-  -F "region=Urdu Influence" \
-  -F "audio_file=@test_shukriya_contribution.wav"
+curl.exe -X POST "http://127.0.0.1:8001/api/v1/dialects/contribute" ` 
+>> -F "lang=hi" `                                                             
+>> -F "user_spelling=शुक्रिया" `                                 
+>> -F "meaning=Thank you" `
+>> -F "region=Urdu Influence" `            
+>> -F "audio_file=@test_shukriya.wav"
 ```
-
-
-
-
-
