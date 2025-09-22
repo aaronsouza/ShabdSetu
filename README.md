@@ -78,26 +78,27 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 
 ---
 
-⚙️ API Endpoint ReferenceHere are the curl.exe commands to test the API endpoints.Part 1: Learning Mode CommandsA. Fetching Lesson Content1. Get All Learning Categoriescurl.exe "[http://127.0.0.1:8001/api/v1/learning/categories](http://127.0.0.1:8001/api/v1/learning/categories)"
-2. Get Lessons for a Specific Category (e.g., Category 1 for "Greetings")curl.exe "[http://127.0.0.1:8001/api/v1/learning/lessons/1](http://127.0.0.1:8001/api/v1/learning/lessons/1)"
-3. Get Phrases for a Specific Lesson (e.g., Lesson 1 for "Formal Greetings")curl.exe "[http://127.0.0.1:8001/api/v1/learning/phrases/1](http://127.0.0.1:8001/api/v1/learning/phrases/1)"
-B. Evaluating Pronunciation (Score & Feedback)Testing "नमस्ते" (ID HIN_GREET_01). Requires test_hindi.wav file.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/learning/evaluate](http://127.0.0.1:8001/api/v1/learning/evaluate)" `
+BhashaBuddy API Endpoint ReferenceThis document provides the curl.exe commands to test all endpoints of the BhashaBuddy API.Prerequisite: Before running any of these commands, ensure your Python server is running in PyCharm.Part 1: Learning Mode CommandsA. Fetching Lesson ContentThese commands allow you to navigate the structured curriculum.1. Get All Learning CategoriesReturns a list of all main learning categories (e.g., "Greetings", "Basic Grammar").curl.exe "[http://127.0.0.1:8001/api/v1/learning/categories](http://127.0.0.1:8001/api/v1/learning/categories)"
+2. Get Lessons for a Specific CategoryReturns a list of lessons within a given category. Use the id from the previous command (e.g., 1 for "Greetings").curl.exe "[http://127.0.0.1:8001/api/v1/learning/lessons/1](http://127.0.0.1:8001/api/v1/learning/lessons/1)"
+3. Get Phrases for a Specific LessonReturns a list of practice phrases for a given lesson. Use the id from the previous command (e.g., 1 for "Formal Greetings").curl.exe "[http://127.0.0.1:8001/api/v1/learning/phrases/1](http://127.0.0.1:8001/api/v1/learning/phrases/1)"
+B. Evaluating Pronunciation (Score & Feedback)This endpoint takes a user's audio and evaluates it against a specific phrase from the database.Prerequisite: A .wav file named test_hindi.wav (recording of "नमस्ते") must be in your project folder.Target: Evaluates against the phrase with ID HIN_GREET_01 ("नमस्ते").curl.exe -X POST "[http://127.0.0.1:8001/api/v1/learning/evaluate](http://127.0.0.1:8001/api/v1/learning/evaluate)" `
 -H "accept: application/json" `
 -F "lang=hi" `
 -F "phrase_id=HIN_GREET_01" `
 -F "audio_file=@test_hindi.wav"
-Part 2: Documenting Mode CommandsA. Contributing a "Common" WordTesting "नमस्ते". Should respond with "is_rare_candidate": false. Requires test_namaste_contribution.wav.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/dialects/contribute](http://127.0.0.1:8001/api/v1/dialects/contribute)" `
+Part 2: Documenting Mode CommandsA. Contributing a "Common" WordThis tests the contribution of a word that already exists in the dictionary. The API should respond with "is_rare_candidate": false.Prerequisite: A .wav file named test_namaste_contribution.wav (recording of "नमस्ते") must be in your project folder.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/dialects/contribute](http://127.0.0.1:8001/api/v1/dialects/contribute)" `
 -F "lang=hi" `
 -F "user_spelling=नमस्ते" `
 -F "meaning=A respectful greeting" `
 -F "region=General" `
 -F "audio_file=@test_namaste_contribution.wav"
-B. Contributing a "Rare" WordTesting "शुक्रिया". Should respond with "is_rare_candidate": true. Requires test_shukriya_contribution.wav.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/dialects/contribute](http://127.0.0.1:8001/api/v1/dialects/contribute)" `
+B. Contributing a "Rare" WordThis tests the contribution of a new word. The API should flag it with "is_rare_candidate": true and set its status to pending_expert_validation.Prerequisite: A .wav file named test_shukriya_contribution.wav (recording of "शुक्रिया") must be in your project folder.curl.exe -X POST "[http://127.0.0.1:8001/api/v1/dialects/contribute](http://127.0.0.1:8001/api/v1/dialects/contribute)" `
 -F "lang=hi" `
 -F "user_spelling=शुक्रिया" `
 -F "meaning=Thank you" `
 -F "region=Urdu Influence" `
 -F "audio_file=@test_shukriya_contribution.wav"
+
 
 
 
