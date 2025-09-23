@@ -11,3 +11,6 @@ jellyfish
 psycopg2-binary
 piper-tts
 requests
+sentencepiece
+accelerate
+googletrans==4.0.0-rc1

@@ -1,25 +1,23 @@
-# main.py
-
 import io
-import os
 import psycopg2
 import numpy as np
 import torch
 import noisereduce as nr
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 from pydub import AudioSegment
+from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 
-# Import the pronunciation evaluation logic
+# Import your custom logic modules
 from pronunciation_evaluator import evaluate_pronunciation
+from translation_service import TranslationService
 
 # --- IMPORTANT: PASTE YOUR DATABASE CREDENTIALS HERE ---
-DB_HOST = os.environ.get("DB_HOST", "db.biutmpyotmmsjcnbllff.supabase.co")
-DB_PORT = os.environ.get("DB_PORT", "5432")
-DB_NAME = os.environ.get("DB_NAME", "postgres")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "aaronashutosh")
+DB_HOST = "db.biutmpyotmmsjcnbllff.supabase.co"
+DB_PORT = "5432"
+DB_NAME = "postgres"
+DB_USER = "postgres"
+DB_PASSWORD = "aaronashutosh"
 # ---
 
 # -----------------
@@ -27,19 +25,24 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD", "aaronashutosh")
 # -----------------
 
 app = FastAPI(
-    title="BhashaBuddy Complete AI API",
-    description="API for language learning lessons and dialect documentation.",
-    version="3.0.0"
+    title="BhashaBuddy AI API",
+    description="A complete API for language learning and dialect documentation.",
+    version="4.0.0"
 )
 
+# Global variables for our AI models
 ASR_MODELS = {}
+TRANSLATION_SERVICE = None
 SUPPORTED_LANGUAGES = {"hi": "./indicwav2vec-hindi"}
-
 
 @app.on_event("startup")
 async def load_models():
-    """Load all AI models on server startup."""
-    print("Loading ASR models...")
+    """Load all AI models into memory on server startup."""
+    global TRANSLATION_SERVICE
+
+    print("--- Loading AI Models ---")
+    # Load Speech-to-Text (ASR) Model
+    print("Loading ASR model...")
     for lang_code, model_name in SUPPORTED_LANGUAGES.items():
         try:
             processor = Wav2Vec2Processor.from_pretrained(model_name)
@@ -49,9 +52,18 @@ async def load_models():
         except Exception as e:
             print(f"❌ Error loading ASR model for {lang_code}: {e}")
 
+    # Load Translation Model
+    try:
+        TRANSLATION_SERVICE = TranslationService()
+        TRANSLATION_SERVICE.load_model()
+    except Exception as e:
+        print(f"❌ Critical error loading translation service: {e}")
+        TRANSLATION_SERVICE = None # Ensure it's None on failure
+
+    print("--- All models loaded ---")
 
 # -----------------
-# 2. HELPER FUNCTIONS (Database, Audio, ASR)
+# 2. HELPER FUNCTIONS
 # -----------------
 
 def get_db_connection():
@@ -63,11 +75,10 @@ def get_db_connection():
         return conn
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
-        raise HTTPException(status_code=500, detail="Database connection error.")
-
+        raise HTTPException(status_code=500, detail="500: Database connection error.")
 
 def preprocess_audio(audio_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
-    """Cleans and standardizes the audio file."""
+    """Cleans, standardizes, and converts audio from any format."""
     try:
         audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
         audio_segment = audio_segment.set_channels(1)
@@ -76,7 +87,6 @@ def preprocess_audio(audio_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
         return nr.reduce_noise(y=samples, sr=target_sr, prop_decrease=0.8)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Audio processing failed: {e}")
-
 
 def transcribe_audio_data(audio_data: np.ndarray, lang: str) -> str:
     """Performs transcription on pre-processed audio data."""
@@ -93,10 +103,15 @@ def transcribe_audio_data(audio_data: np.ndarray, lang: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
 
+# -----------------
+# 3. API ENDPOINTS
+# -----------------
 
-# ----------------------------------------------------------------------
-# 3. NEW LESSON STRUCTURE ENDPOINTS
-# ----------------------------------------------------------------------
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Welcome to the BhashaBuddy AI API!"}
+
+# --- Part 1: Learning Mode Endpoints ---
 
 @app.get("/api/v1/learning/categories")
 def get_all_categories():
@@ -110,11 +125,9 @@ def get_all_categories():
         cur.close()
         return categories
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Database query failed: {e}")
     finally:
-        if conn:
-            conn.close()
-
+        if conn: conn.close()
 
 @app.get("/api/v1/learning/lessons/{category_id}")
 def get_lessons_for_category(category_id: int):
@@ -128,35 +141,25 @@ def get_lessons_for_category(category_id: int):
         cur.close()
         return lessons
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Database query failed: {e}")
     finally:
-        if conn:
-            conn.close()
-
+        if conn: conn.close()
 
 @app.get("/api/v1/learning/phrases/{lesson_id}")
 def get_phrases_for_lesson(lesson_id: int):
-    """Fetches all practice phrases for a specific lesson ID."""
+    """Fetches all phrases for a specific lesson ID."""
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute(
-            "SELECT phrase_id_text, hindi_phrase, english_translation FROM phrases WHERE lesson_id = %s ORDER BY id;",
-            (lesson_id,))
+        cur.execute("SELECT phrase_id_text, hindi_phrase, english_translation FROM phrases WHERE lesson_id = %s ORDER BY id;", (lesson_id,))
         phrases = [{"id": row[0], "hindi": row[1], "english": row[2]} for row in cur.fetchall()]
         cur.close()
         return phrases
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Database query failed: {e}")
     finally:
-        if conn:
-            conn.close()
-
-
-# ----------------------------------------------------------------------
-# 4. EXISTING WORKFLOW ENDPOINTS (LEARNING & DOCUMENTING)
-# ----------------------------------------------------------------------
+        if conn: conn.close()
 
 @app.post("/api/v1/learning/evaluate")
 async def evaluate_user_pronunciation(
@@ -164,9 +167,8 @@ async def evaluate_user_pronunciation(
         phrase_id: str = Form(..., description="The text ID of the phrase (e.g., 'HIN_GREET_01')"),
         audio_file: UploadFile = File(..., description="User's audio recording.")
 ):
-    """Evaluates user pronunciation against a target phrase from the database."""
+    """Handles pronunciation evaluation for the learning mode."""
     conn = None
-    target_phrase = ""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -174,33 +176,35 @@ async def evaluate_user_pronunciation(
         result = cur.fetchone()
         cur.close()
         if not result:
-            raise HTTPException(status_code=404, detail=f"Phrase ID '{phrase_id}' not found.")
+            raise HTTPException(status_code=404, detail=f"404: Phrase ID '{phrase_id}' not found.")
         target_phrase = result[0]
+
+        contents = await audio_file.read()
+        processed_audio = preprocess_audio(contents)
+        transcribed_text = transcribe_audio_data(processed_audio, lang)
+
+        if not transcribed_text:
+            return {"transcription": "", "target_phrase": target_phrase, "score": 0, "feedback": "Could not hear you. Please speak louder."}
+
+        evaluation = evaluate_pronunciation(transcribed_text, target_phrase, lang)
+        return evaluation
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        # Close connection if it was opened
-        if conn:
-            conn.close()
-        raise HTTPException(status_code=500, detail=f"Database query failed: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
     finally:
-        if conn:
-            conn.close()
+        if conn: conn.close()
 
-    contents = await audio_file.read()
-    processed_audio = preprocess_audio(contents)
-    transcribed_text = transcribe_audio_data(processed_audio, lang)
-
-    evaluation = evaluate_pronunciation(transcribed_text, target_phrase, lang)
-    return evaluation
-
+# --- Part 2: Documenting Mode Endpoints ---
 
 @app.post("/api/v1/dialects/contribute")
 async def contribute_dialect(
-        lang: str = Form(..., description="Language code (e.g., 'hi')"),
-        user_spelling: str = Form(..., description="Contributor's spelling of the word."),
-        meaning: str = Form(..., description="The meaning of the word."),
-        region: str = Form(..., description="The region where the word is used."),
-        notes: str = Form(None, description="Any additional context or notes."),
-        audio_file: UploadFile = File(..., description="The audio recording.")
+    lang: str = Form(..., description="Language code (e.g., 'hi')"),
+    user_spelling: str = Form(..., description="Contributor's spelling of the word."),
+    meaning: str = Form(..., description="The meaning of the word."),
+    region: str = Form(..., description="The region where the word is used."),
+    notes: str = Form(None, description="Any additional context or notes."),
+    audio_file: UploadFile = File(..., description="The audio recording.")
 ):
     """Handles user-submitted dialect contributions."""
     conn = None
@@ -209,20 +213,20 @@ async def contribute_dialect(
         processed_audio = preprocess_audio(audio_bytes)
         asr_transcription = transcribe_audio_data(processed_audio, lang)
 
-        user_id = "user_abc_123"  # Hardcoded for now
+        user_id = "user_abc_123" # Hardcoded for now
 
         conn = get_db_connection()
         cur = conn.cursor()
 
         insert_query = """
-        INSERT INTO dialect_contributions 
+        INSERT INTO dialect_contributions
         (user_id, audio_data, user_spelling, asr_transcription, meaning, region, notes, status, created_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending_review', %s)
-        RETURNING id; 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id;
         """
         cur.execute(insert_query, (
-            user_id, psycopg2.Binary(audio_bytes), user_spelling, asr_transcription,
-            meaning, region, notes, datetime.utcnow()
+            user_id, audio_bytes, user_spelling, asr_transcription,
+            meaning, region, notes, 'pending_review', datetime.utcnow()
         ))
         new_contribution_id = cur.fetchone()[0]
         conn.commit()
@@ -232,10 +236,10 @@ async def contribute_dialect(
         cur.execute(check_query, (asr_transcription,))
         count = cur.fetchone()[0]
 
-        if count == 0 and asr_transcription:  # Ensure transcription is not empty
+        if count == 0:
             is_rare = True
-            update_query = "UPDATE dialect_contributions SET status = 'pending_expert_validation' WHERE id = %s;"
-            cur.execute(update_query, (new_contribution_id,))
+            update_query = "UPDATE dialect_contributions SET status = %s WHERE id = %s;"
+            cur.execute(update_query, ('pending_expert_validation', new_contribution_id))
             conn.commit()
 
         cur.close()
@@ -247,18 +251,13 @@ async def contribute_dialect(
             "is_rare_candidate": is_rare,
             "status": 'pending_expert_validation' if is_rare else 'pending_review'
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if conn:
-            conn.close()
+        if conn: conn.close()
 
 
-# -----------------
-# 5. ROOT ENDPOINT
-# -----------------
 
-@app.get("/")
-def read_root():
-    return {"status": "ok", "message": "Welcome to the BhashaBuddy Complete AI API!"}
+
 
