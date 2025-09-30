@@ -42,7 +42,7 @@ Our mission is to combine **learning with preservation**, enabling users to not 
 * **Frontend (Android):** Kotlin + Jetpack Compose
 * **Backend:** FastAPI on Google Cloud Run
 * **Database:** PostgreSQL on Supabase
-* **AI Models:** [AI4Bharat](https://ai4bharat.iitm.ac.in/) (ASR, IndicTrans2, IndicTTS)
+* **AI Models:** [AI4Bharat](https://ai4bharat.iitm.ac.in/) (IndicConformer ASR, IndicTrans2, IndicTTS)
 * **Deployment:** Docker + Google Cloud
 
 ---
