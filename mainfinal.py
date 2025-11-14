@@ -463,3 +463,66 @@ async def evaluate_lesson_phrase_pronunciation(
             await asyncio.to_thread(received_file_path.unlink)
         if wav_file_path.exists():
             await asyncio.to_thread(wav_file_path.unlink)
+
+
+# --- Part 2: Documenting Mode Endpoints ---
+
+@app.post("/api/v1/dialects/contribute")
+async def contribute_dialect(
+    lang: str = Form(..., description="Language code (e.g., 'hi')"),
+    user_spelling: str = Form(..., description="Contributor's spelling of the word."),
+    meaning: str = Form(..., description="The meaning of the word."),
+    region: str = Form(..., description="The region where the word is used."),
+    notes: str = Form(None, description="Any additional context or notes."),
+    audio_file: UploadFile = File(..., description="The audio recording.")
+):
+    """Handles user-submitted dialect contributions."""
+    conn = None
+    try:
+        audio_bytes = await audio_file.read()
+        processed_audio = preprocess_audio(audio_bytes)
+        asr_transcription = transcribe_audio_data(processed_audio, lang)
+
+        user_id = "user_abc_123" # Hardcoded for now
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        insert_query = """
+        INSERT INTO dialect_contributions
+        (user_id, audio_data, user_spelling, asr_transcription, meaning, region, notes, status, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id;
+        """
+        cur.execute(insert_query, (
+            user_id, audio_bytes, user_spelling, asr_transcription,
+            meaning, region, notes, 'pending_review', datetime.utcnow()
+        ))
+        new_contribution_id = cur.fetchone()[0]
+        conn.commit()
+
+        is_rare = False
+        check_query = "SELECT COUNT(*) FROM dialect_dictionary WHERE word = %s;"
+        cur.execute(check_query, (asr_transcription,))
+        count = cur.fetchone()[0]
+
+        if count == 0:
+            is_rare = True
+            update_query = "UPDATE dialect_contributions SET status = %s WHERE id = %s;"
+            cur.execute(update_query, ('pending_expert_validation', new_contribution_id))
+            conn.commit()
+
+        cur.close()
+
+        return {
+            "message": "Contribution received successfully!",
+            "contribution_id": new_contribution_id,
+            "asr_transcription": asr_transcription,
+            "is_rare_candidate": is_rare,
+            "status": 'pending_expert_validation' if is_rare else 'pending_review'
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
